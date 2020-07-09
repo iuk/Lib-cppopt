@@ -83,20 +83,29 @@ void generatePointSets(cppopt::Matrix &pointsModel, cppopt::Matrix &pointsScene,
     }
 }
 
+using namespace std;
+
 int main() {
     
     // Generate random points in two dimensions.
     cppopt::Matrix mp, sp;
     generatePointSets(mp, sp, 0.3f, 0.001f);
 
+    cout << "mp:\n" << mp << endl;
+    cout << "sp:\n" << sp << endl;
+
     // Define the residual function that measures the geometric error between the two point sets with respect to the
     // current rotation estimate. Note that it is assumed that the points within sets are linked via indices.
-    cppopt::F f = [&mp, &sp](const cppopt::Matrix &x) -> cppopt::Matrix {
+    // 残差函数，输出残差向量(列向量)
+    cppopt::F f = [&mp, &sp](const cppopt::Matrix &x) -> cppopt::Matrix //
+    {
         cppopt::Matrix y(mp.rows(), 1);
 
         AffineTransform2D t;
         t.setIdentity();
         t.rotate(x(0));
+
+        // cout << "t:\n" << t.rotation() << endl;
         
         for (int i = 0; i < y.rows(); ++i) {
             Vector2D m = mp.row(i);
@@ -108,7 +117,9 @@ int main() {
     };
     
     // Define the Jacobian of the residual function.
-    cppopt::F df = [&mp, &sp](const cppopt::Matrix &x) -> cppopt::Matrix {
+    // 雅克比函数，输出雅克比矩阵
+    cppopt::F df = [&mp, &sp](const cppopt::Matrix &x) -> cppopt::Matrix //
+    {
         cppopt::Matrix d(mp.rows(), x.rows());
        
         AffineTransform2D t;
@@ -136,13 +147,18 @@ int main() {
     };
 
     // Create start solution
+    // x：待优化参数，并初始化
     cppopt::Matrix x(1, 1);
     x << 0.0f;
     
     // Iterate while norm of residual is greater than a user-selected threshold.
     cppopt::ResultInfo ri = cppopt::SUCCESS;
-    while (ri == cppopt::SUCCESS && f(x).norm() > 0.01f) {
+    
+    while (ri == cppopt::SUCCESS && f(x).norm() > 0.007f) // 终止条件
+    {
+        // 一次 GN 迭代，自动完成对 待估参数x的更新
         ri = cppopt::gaussNewton(f, df, x);
+        
         std::cout
             << std::fixed << std::setw(3)
             << "Parameters: " << x.transpose()
